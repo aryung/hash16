@@ -1,10 +1,24 @@
 use hex;
+use std::env;
+
 fn encode_host16(name: &str) -> String {
     // Convert the input string to its hexadecimal representation
-    let hex = hex::encode(name);
-    
+    let mut hex = hex::encode(name);
+
     // Insert dashes to format as a UUID
     let mut uuid_format = String::new();
+
+    if hex.ends_with("0") {
+        // If the hex string ends with a zero, append a specific pattern of 9's and 0's
+        // Adjust this logic based on the actual pattern you need
+        hex.push_str("999");
+    }
+
+    while hex.len() <= 32 {
+        // If the hex string is less than 32 characters, append zeros
+        hex.push('0');
+    }
+
     let parts = [8, 4, 4, 4, 12]; // Positions for dashes in a UUID
     let mut current_pos = 0;
 
@@ -15,17 +29,7 @@ fn encode_host16(name: &str) -> String {
         if current_pos + part < hex.len() {
             uuid_format.push_str(&hex[current_pos..current_pos + part]);
         } else {
-            // If the part extends beyond the hex string length, fill in with 9's and 0's as per your JS logic
-            let remainder = part - (hex.len() - current_pos);
             uuid_format.push_str(&hex[current_pos..]);
-            // For the test cases given, append a specific pattern of 9's and 0's
-            // Adjust this logic based on the actual pattern you need
-            if name.ends_with("140") {
-                uuid_format.push_str(&"9".repeat(remainder - 3));
-                uuid_format.push_str("900");
-            } else if name.ends_with("143") {
-                uuid_format.push_str(&"0".repeat(remainder));
-            }
             break;
         }
         current_pos += part;
@@ -35,7 +39,7 @@ fn encode_host16(name: &str) -> String {
 }
 
 fn decode_host16(encoded: &str) -> Result<String, hex::FromHexError> {
-              // Remove dashes to get a continuous hex string
+    // Remove dashes to get a continuous hex string
     let clean_encoded = encoded.replace("-", "");
 
     let processed_encoded = if let Some(pos) = clean_encoded.find("999") {
@@ -55,23 +59,55 @@ fn decode_host16(encoded: &str) -> Result<String, hex::FromHexError> {
 }
 
 fn main() {
-    let encoded_140 = encode_host16("CIRRUS-005140");
-    println!("Encoded CIRRUS-005140: {}", encoded_140);
+    // let encoded_140 = encode_host16("CIRRUS-005140");
+    // println!("Encoded CIRRUS-005140: {}", encoded_140);
+    //
+    // let encoded_143 = encode_host16("CIRRUS-005143");
+    // println!("Encoded CIRRUS-005143: {}", encoded_143);
+    //
+    // let encoded_0143 = encode_host16("CIRRUS-5143");
+    // println!("Encoded CIRRUS-5143: {}", encoded_0143);
+    //
+    // let encoded_cirrus = encode_host16("CIRRUS");
+    // println!("Encoded CIRRUS: {}", encoded_cirrus);
+    //
+    // let examples = vec![
+    //     "43495252-5553-2d30-3035-313430999900", // With "999" followed by zeros
+    //     "43495252-5553-2d30-3035-313433000000", // Ending with zeros, no "999"
+    // ];
+    //
+    // for encoded in examples {
+    //     match decode_host16(encoded) {
+    //         Ok(decoded) => println!("Decoded: {}", decoded),
+    //         Err(e) => println!("Error decoding: {}", e),
+    //     }
+    // }
 
-    let encoded_143 = encode_host16("CIRRUS-005143");
-    println!("Encoded CIRRUS-005143: {}", encoded_143);
+    let args: Vec<String> = env::args().collect();
 
-    let examples = vec![
-        "43495252-5553-2d30-3035-313430999900", // With "999" followed by zeros
-        "43495252-5553-2d30-3035-313433000000", // Ending with zeros, no "999"
-    ];
+    if args.len() != 3 {
+        eprintln!("Usage: {} -h <name> or {} -p <encoded>", args[0], args[0]);
+        std::process::exit(1);
+    }
 
-    for encoded in examples {
-        match decode_host16(encoded) {
-            Ok(decoded) => println!("Decoded: {}", decoded),
-            Err(e) => println!("Error decoding: {}", e),
+    let flag = &args[1];
+    let input = &args[2];
+
+    match flag.as_str() {
+        "-h" => {
+            let encoded = encode_host16(input);
+            println!("{}", encoded);
+        }
+        "-p" => match decode_host16(input) {
+            Ok(decoded) => println!("{}", decoded),
+            Err(e) => {
+                eprintln!("Failed to decode: {}", e);
+                std::process::exit(1);
+            }
+        },
+        _ => {
+            eprintln!("Invalid flag '{}', use -h for encode, -p for decode", flag);
+            std::process::exit(1);
         }
     }
 }
-
-
