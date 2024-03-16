@@ -1,0 +1,73 @@
+use std::str;
+
+fn encode_host16(name: &str) -> String {
+    let hex_str = hex::encode(name);
+    let mut encoded = String::with_capacity(36);
+
+    // 檢查最後一位是否為 0,如果是則添加特殊字符
+    if hex_str.chars().last().unwrap() == '0' {
+        encoded.push_str(&hex_str);
+        encoded.push_str("999000");
+    } else {
+        encoded.push_str(&hex_str);
+        encoded.push_str("000000");
+    }
+
+    // 將字符串格式化為 UUID 格式
+    encoded.insert(20, '-');
+    encoded.insert(16, '-');
+    encoded.insert(12, '-');
+    encoded.insert(8, '-');
+
+    encoded
+}
+
+fn decode_host16(encoded: &str) -> String {
+    let binding = encoded
+        .replace("-", "")
+        .replace("0999", "");
+
+    let decoded = binding
+        .trim_end_matches('0');
+
+    let bytes = hex::decode(decoded).unwrap();
+    bytes.iter().map(|&c| c as char).collect()
+}
+
+fn main() {
+    let name = "CIRRUS-005140";
+    let encoded = encode_host16(name);
+    let decoded = decode_host16(&encoded);
+
+    println!("Encoded: {}", encoded);
+    println!("Decoded: {}", decoded);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{decode_host16, encode_host16};
+
+    #[test]
+    fn test_encode() {
+        assert_eq!(
+            encode_host16("CIRRUS-005140"),
+            "43495252-5553-2d30-3035-313430999000"
+        );
+        assert_eq!(
+            encode_host16("CIRRUS-005143"),
+            "43495252-5553-2d30-3035-313433000000"
+        );
+    }
+
+    #[test]
+    fn test_encode_and_decode() {
+        assert_eq!(
+            decode_host16(&encode_host16("CIRRUS-005140")),
+            "CIRRUS-005140"
+        );
+        assert_eq!(
+            decode_host16(&encode_host16("CIRRUS-005143")),
+            "CIRRUS-005143"
+        );
+    }
+}
